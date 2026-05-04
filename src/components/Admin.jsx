@@ -23,51 +23,52 @@ function Admin({ db, updateDbSettings }) {
     }
   };
 
+  const [scannerError, setScannerError] = useState(null);
+
   useEffect(() => {
     let scanner = null;
     
-    const startScanner = async () => {
-      if (activeTab !== 'scanner') return;
-      
-      // Wait a moment for the DOM element #reader to be available
-      await new Promise(r => setTimeout(r, 100));
-      
-      const readerElement = document.getElementById('reader');
-      if (!readerElement) return;
-
-      try {
-        scanner = new Html5QrcodeScanner("reader", { 
-          fps: 10, 
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0
-        });
-
-        scanner.render(async (decodedText) => {
-          try {
-            const guestData = JSON.parse(decodedText);
-            if (guestData.id) {
-              await handleCheckIn(guestData.id);
-              // We don't stop the scanner so multiple guests can be checked in quickly
-            }
-          } catch (err) {
-            console.error("Invalid QR Format:", decodedText);
-          }
-        }, (error) => {
-          // Silent failure for "no QR found in frame"
-        });
-      } catch (err) {
-        console.error("Scanner startup error:", err);
-      }
-    };
-
-    startScanner();
+    if (activeTab === 'scanner') {
+      // Clear any previous error when switching to scanner tab
+      setScannerError(null);
+    }
 
     return () => {
       if (scanner) {
-        scanner.clear().catch(e => console.warn("Scanner cleanup warning:", e));
+        scanner.clear().catch(e => console.warn("Scanner cleanup:", e));
       }
     };
   }, [activeTab]);
+
+  const startScannerManually = async () => {
+    setScannerError(null);
+    try {
+      const scanner = new Html5QrcodeScanner("reader", { 
+        fps: 10, 
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
+      });
+
+      scanner.render(async (decodedText) => {
+        try {
+          const guestData = JSON.parse(decodedText);
+          if (guestData.id) {
+            await handleCheckIn(guestData.id);
+          }
+        } catch (err) {
+          console.error("Invalid QR Format:", decodedText);
+        }
+      }, (error) => {
+        // Handle initialization errors specifically
+        if (error?.includes("permission") || error?.includes("NotFound")) {
+          setScannerError("Camera access denied or not found. Please check your browser permissions.");
+        }
+      });
+    } catch (err) {
+      setScannerError("Failed to start scanner. Ensure you are on a secure (HTTPS) connection.");
+      console.error("Scanner startup error:", err);
+    }
+  };
 
   const handleCheckIn = async (guestId) => {
     if (!supabase) return;
@@ -164,7 +165,23 @@ function Admin({ db, updateDbSettings }) {
           {activeTab === 'scanner' && (
             <motion.div key="scanner" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="glass-card" style={{ background: 'white', textAlign: 'center' }}>
               <h3 style={{ marginBottom: '1.5rem' }}>Entry Scanner</h3>
+              
+              {scannerError && (
+                <div style={{ padding: '1rem', background: '#fff5f5', color: '#c53030', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem', border: '1px solid #feb2b2' }}>
+                  {scannerError}
+                </div>
+              )}
+
               <div id="reader" style={{ maxWidth: '500px', margin: '0 auto' }}></div>
+              
+              <div style={{ marginTop: '2rem' }}>
+                <button className="btn btn-gold" onClick={startScannerManually}>
+                  <Camera size={18} style={{ marginRight: '0.5rem' }} /> Start Camera
+                </button>
+                <p style={{ fontSize: '0.8rem', color: '#999', marginTop: '1rem' }}>
+                  Ensure you are using a secure (HTTPS) connection.
+                </p>
+              </div>
             </motion.div>
           )}
 
