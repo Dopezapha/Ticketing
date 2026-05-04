@@ -98,43 +98,47 @@ function Registration({ db }) {
           .eq('code', code.toUpperCase());
         if (codeError) throw codeError;
 
-        // 4. Send Confirmation Email
-        const ticketUrl = `${window.location.origin}/ticket/${guestId}`;
-        await sendWeddingEmail(
-          form.email,
-          `Registration Confirmed: Wedding of Amarachi & Kingsley`,
-          `<div style="font-family: serif; max-width: 600px; margin: 0 auto; padding: 40px; border: 1px solid #d4af37; background: #fdfbf7; text-align: center;">
-            <div style="margin-bottom: 30px;">
-              <span style="font-size: 3rem; color: #d4af37;">♥</span>
-            </div>
-            <h1 style="color: #996515; font-size: 2.2rem; margin-bottom: 10px;">Invitation Confirmed</h1>
-            <p style="font-size: 1.1rem; color: #2c2c2c; margin-bottom: 30px;">Dear ${form.name}, your presence is requested at our royal celebration.</p>
-            
-            <div style="background: white; padding: 30px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 30px;">
-              <h3 style="text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.8rem; color: #999; margin-bottom: 20px;">Your Seating Arrangement</h3>
-              <p style="font-size: 0.7rem; color: #999; margin: 0;">TABLE</p>
-              <p style="font-size: 2rem; color: #d4af37; font-weight: bold; margin: 0;">${tableNumber}</p>
-              <p style="font-size: 0.7rem; color: #999; margin: 0; margin-top: 10px;">SEAT</p>
-              <p style="font-size: 2rem; color: #d4af37; font-weight: bold; margin: 0;">${seatNumber}</p>
-              <p style="margin-top: 20px; font-size: 0.9rem; color: #666;">Category: ${finalCategoryName}</p>
-            </div>
+        // 4. Send Confirmation Email (Non-blocking)
+        try {
+          const ticketUrl = `${window.location.origin}/ticket/${guestId}`;
+          sendWeddingEmail(
+            form.email,
+            `Registration Confirmed: Wedding of Amarachi & Kingsley`,
+            `<div style="font-family: serif; max-width: 600px; margin: 0 auto; padding: 40px; border: 1px solid #d4af37; background: #fdfbf7; text-align: center;">
+              <div style="margin-bottom: 30px;">
+                <span style="font-size: 3rem; color: #d4af37;">♥</span>
+              </div>
+              <h1 style="color: #996515; font-size: 2.2rem; margin-bottom: 10px;">Invitation Confirmed</h1>
+              <p style="font-size: 1.1rem; color: #2c2c2c; margin-bottom: 30px;">Dear ${form.name}, your presence is requested at our royal celebration.</p>
+              
+              <div style="background: white; padding: 30px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 30px;">
+                <h3 style="text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.8rem; color: #999; margin-bottom: 20px;">Your Seating Arrangement</h3>
+                <p style="font-size: 0.7rem; color: #999; margin: 0;">TABLE</p>
+                <p style="font-size: 2rem; color: #d4af37; font-weight: bold; margin: 0;">${tableNumber}</p>
+                <p style="font-size: 0.7rem; color: #999; margin: 0; margin-top: 10px;">SEAT</p>
+                <p style="font-size: 2rem; color: #d4af37; font-weight: bold; margin: 0;">${seatNumber}</p>
+                <p style="margin-top: 20px; font-size: 0.9rem; color: #666;">Category: ${finalCategoryName}</p>
+              </div>
 
-            <p style="font-size: 1rem; color: #2c2c2c; margin-bottom: 20px;">Please present your digital QR code at the venue entrance for seamless entry.</p>
-            
-            <div style="background: white; padding: 20px; display: inline-block; border-radius: 8px; margin-bottom: 20px;">
-              <img src="{{QR_CODE_DATA_URL}}" alt="Your Entry QR Code" style="width: 250px; height: 250px; display: block;" />
-            </div>
+              <p style="font-size: 1rem; color: #2c2c2c; margin-bottom: 20px;">Please present your digital QR code at the venue entrance for seamless entry.</p>
+              
+              <div style="background: white; padding: 20px; display: inline-block; border-radius: 8px; margin-bottom: 20px;">
+                <img src="{{QR_CODE_DATA_URL}}" alt="Your Entry QR Code" style="width: 250px; height: 250px; display: block;" />
+              </div>
 
-            <div style="margin-top: 20px;">
-              <p style="font-size: 0.9rem; color: #666;">Can't see the image? <a href="${ticketUrl}" style="color: #d4af37; text-decoration: underline;">View your live ticket here</a></p>
-            </div>
-            
-            <div style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
-              <p style="font-size: 0.8rem; color: #999;">This invitation is unique to you and cannot be reused.</p>
-            </div>
-          </div>`,
-          qrPayload
-        );
+              <div style="margin-top: 20px;">
+                <p style="font-size: 0.9rem; color: #666;">Can't see the image? <a href="${ticketUrl}" style="color: #d4af37; text-decoration: underline;">View your live ticket here</a></p>
+              </div>
+              
+              <div style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
+                <p style="font-size: 0.8rem; color: #999;">This invitation is unique to you and cannot be reused.</p>
+              </div>
+            </div>`,
+            qrPayload
+          ).catch(err => console.error("Email background error:", err));
+        } catch (emailErr) {
+          console.error("Email send failed (non-blocking):", emailErr);
+        }
       }
 
       navigate(`/ticket/${guestId}`);
