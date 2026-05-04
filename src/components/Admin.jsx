@@ -24,26 +24,49 @@ function Admin({ db, updateDbSettings }) {
   };
 
   useEffect(() => {
-    if (activeTab === 'scanner') {
-      const scanner = new Html5QrcodeScanner("reader", { 
-        fps: 10, 
-        qrbox: { width: 250, height: 250 } 
-      });
+    let scanner = null;
+    
+    const startScanner = async () => {
+      if (activeTab !== 'scanner') return;
+      
+      // Wait a moment for the DOM element #reader to be available
+      await new Promise(r => setTimeout(r, 100));
+      
+      const readerElement = document.getElementById('reader');
+      if (!readerElement) return;
 
-      const onScanSuccess = async (decodedText) => {
-        try {
-          const guestData = JSON.parse(decodedText);
-          await handleCheckIn(guestData.id);
-          scanner.clear();
-          setScanning(false);
-        } catch (err) {
-          console.error("Invalid QR Code", err);
-        }
-      };
+      try {
+        scanner = new Html5QrcodeScanner("reader", { 
+          fps: 10, 
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0
+        });
 
-      scanner.render(onScanSuccess);
-      return () => scanner.clear();
-    }
+        scanner.render(async (decodedText) => {
+          try {
+            const guestData = JSON.parse(decodedText);
+            if (guestData.id) {
+              await handleCheckIn(guestData.id);
+              // We don't stop the scanner so multiple guests can be checked in quickly
+            }
+          } catch (err) {
+            console.error("Invalid QR Format:", decodedText);
+          }
+        }, (error) => {
+          // Silent failure for "no QR found in frame"
+        });
+      } catch (err) {
+        console.error("Scanner startup error:", err);
+      }
+    };
+
+    startScanner();
+
+    return () => {
+      if (scanner) {
+        scanner.clear().catch(e => console.warn("Scanner cleanup warning:", e));
+      }
+    };
   }, [activeTab]);
 
   const handleCheckIn = async (guestId) => {
