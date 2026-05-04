@@ -31,10 +31,11 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
     const fetchData = async () => {
       if (!supabase) {
         const saved = localStorage.getItem('wedding_ticketing_db');
-        if (saved) setDb(JSON.parse(saved));
+        if (saved && mounted) setDb(JSON.parse(saved));
         setLoading(false);
         return;
       }
@@ -43,6 +44,8 @@ function App() {
       const { data: guests } = await supabase.from('guests').select('*').order('created_at', { ascending: false });
       const { data: codes } = await supabase.from('invite_codes').select('*');
       const { data: settings } = await supabase.from('settings').select('*').single();
+
+      if (!mounted) return;
 
       const defaultSettings = {
         seatsPerBlock: 10,
@@ -63,26 +66,26 @@ function App() {
       // Force update Supabase to ensure the new categories take effect
       await supabase.from('settings').upsert({ id: 'main', data: defaultSettings });
 
-      const initialDb = {
+      setDb({
         settings: defaultSettings,
         inviteCodes: codes || [],
         guests: guests || []
-      };
-      setDb(initialDb);
+      });
       setLoading(false);
 
       // Subscribe to Realtime
-      const guestsChannel = supabase.channel('guests-sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'guests' }, payload => {
-          refreshGuests();
-        }).subscribe();
+      const guestsChannel = supabase
+        .channel('guests-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'guests' }, () => refreshGuests())
+        .subscribe();
 
-      const codesChannel = supabase.channel('codes-sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'invite_codes' }, payload => {
-          refreshCodes();
-        }).subscribe();
+      const codesChannel = supabase
+        .channel('codes-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'invite_codes' }, () => refreshCodes())
+        .subscribe();
 
       return () => {
+        mounted = false;
         supabase.removeChannel(guestsChannel);
         supabase.removeChannel(codesChannel);
       };

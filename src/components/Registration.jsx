@@ -52,18 +52,24 @@ function Registration({ db }) {
         }
       }
 
-      let finalCategoryName = categorySettings.name;
-      if (form.category === 'others' && form.customCategory) {
-        let s = form.customCategory.toLowerCase().trim();
+      const normalizeCategory = (cat) => {
+        if (!cat) return '';
+        let s = cat.toLowerCase().trim();
         s = s.replace(/[^a-z0-9\s]/g, ''); // Remove punctuation
         s = s.replace(/\bagc\b/g, 'ag');   // Standardize AGC to AG
-        s = s.split(/\s+/).sort().join(' '); // Sort words (youth ag -> ag youth)
-        
-        // Capitalize each word for a clean database entry
-        finalCategoryName = s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        s = s.split(/\s+/).sort().join(' '); // Sort words
+        // Capitalize each word
+        return s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      };
+
+      let finalCategoryName = categorySettings.name;
+      if (form.category === 'others' && form.customCategory) {
+        finalCategoryName = normalizeCategory(form.customCategory);
       }
 
       const guestId = crypto.randomUUID();
+      const qrPayload = JSON.stringify({ id: guestId, name: form.name });
+      
       const guestData = {
         id: guestId,
         name: form.name,
@@ -93,6 +99,7 @@ function Registration({ db }) {
         if (codeError) throw codeError;
 
         // 4. Send Confirmation Email
+        const ticketUrl = `${window.location.origin}/ticket/${guestId}`;
         await sendWeddingEmail(
           form.email,
           `Registration Confirmed: Wedding of Amarachi & Kingsley`,
@@ -109,15 +116,24 @@ function Registration({ db }) {
               <p style="font-size: 2rem; color: #d4af37; font-weight: bold; margin: 0;">${tableNumber}</p>
               <p style="font-size: 0.7rem; color: #999; margin: 0; margin-top: 10px;">SEAT</p>
               <p style="font-size: 2rem; color: #d4af37; font-weight: bold; margin: 0;">${seatNumber}</p>
-              <p style="margin-top: 20px; font-size: 0.9rem; color: #666;">Category: ${categorySettings.name}</p>
+              <p style="margin-top: 20px; font-size: 0.9rem; color: #666;">Category: ${finalCategoryName}</p>
             </div>
 
             <p style="font-size: 1rem; color: #2c2c2c; margin-bottom: 20px;">Please present your digital QR code at the venue entrance for seamless entry.</p>
             
+            <div style="background: white; padding: 20px; display: inline-block; border-radius: 8px; margin-bottom: 20px;">
+              <img src="{{QR_CODE_DATA_URL}}" alt="Your Entry QR Code" style="width: 250px; height: 250px; display: block;" />
+            </div>
+
+            <div style="margin-top: 20px;">
+              <p style="font-size: 0.9rem; color: #666;">Can't see the image? <a href="${ticketUrl}" style="color: #d4af37; text-decoration: underline;">View your live ticket here</a></p>
+            </div>
+            
             <div style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
               <p style="font-size: 0.8rem; color: #999;">This invitation is unique to you and cannot be reused.</p>
             </div>
-          </div>`
+          </div>`,
+          qrPayload
         );
       }
 

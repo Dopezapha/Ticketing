@@ -12,7 +12,7 @@ const isConfigured = supabaseUrl &&
 export const supabase = isConfigured ? createClient(supabaseUrl, supabaseKey) : null;
 
 // Email Sending Function (via Resend)
-export const sendWeddingEmail = async (to, subject, html) => {
+export const sendWeddingEmail = async (to, subject, html, qrData = null) => {
   if (!resendKey || resendKey.includes('your_resend_api_key')) {
     console.log('--- EMAIL MOCK (No Resend Key) ---');
     console.log(`To: ${to}`);
@@ -29,7 +29,8 @@ export const sendWeddingEmail = async (to, subject, html) => {
       body: JSON.stringify({
         to: to,
         subject: subject,
-        html: html
+        html: html,
+        qrData: qrData
       })
     });
     const result = await response.json();
