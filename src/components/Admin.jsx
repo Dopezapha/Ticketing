@@ -43,11 +43,18 @@ function Admin({ db, updateDbSettings }) {
   const startScannerManually = async () => {
     setScannerError(null);
     try {
-      const scanner = new Html5QrcodeScanner("reader", { 
+      // Configuration for the scanner
+      const config = { 
         fps: 10, 
         qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0
-      });
+        aspectRatio: 1.0,
+        // Request the back camera by default
+        videoConstraints: {
+          facingMode: "environment"
+        }
+      };
+
+      const scanner = new Html5QrcodeScanner("reader", config, false);
 
       scanner.render(async (decodedText) => {
         try {
@@ -59,7 +66,6 @@ function Admin({ db, updateDbSettings }) {
           console.error("Invalid QR Format:", decodedText);
         }
       }, (error) => {
-        // Handle initialization errors specifically
         if (error?.includes("permission") || error?.includes("NotFound")) {
           setScannerError("Camera access denied or not found. Please check your browser permissions.");
         }
